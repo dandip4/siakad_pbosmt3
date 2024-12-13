@@ -15,7 +15,6 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
   List<Map<String, dynamic>> _mahasiswaList = [];
   int? _selectedMatakuliah;
   int? _selectedMahasiswa;
-  double _nilai = 0.0;
   final _formKey = GlobalKey<FormState>();
   final _nilaiController = TextEditingController();
 
@@ -23,6 +22,7 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
   void initState() {
     super.initState();
     _loadData();
+    _loadMatakuliah();
   }
 
   @override
@@ -42,11 +42,8 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
   Future<void> _loadMatakuliah() async {
     final userId = Provider.of<AuthProvider>(context, listen: false).user?.id;
     if (userId != null) {
-      final matakuliah = await Provider.of<NilaiProvider>(
-        context, 
-        listen: false
-      ).getMatakuliahDosen(userId);
-      
+      final matakuliah = await Provider.of<NilaiProvider>(context, listen: false)
+          .getMatakuliahDosen(userId);
       setState(() {
         _matakuliahList = matakuliah;
       });
@@ -54,14 +51,10 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
   }
 
   Future<void> _loadMahasiswa(int idMatakuliah) async {
-    final mahasiswa = await Provider.of<NilaiProvider>(
-      context, 
-      listen: false
-    ).getMahasiswaByMatakuliah(idMatakuliah);
-    
+    final mahasiswa = await Provider.of<NilaiProvider>(context, listen: false)
+        .getMahasiswaByMatakuliah(idMatakuliah);
     setState(() {
       _mahasiswaList = mahasiswa;
-      _selectedMahasiswa = null;
     });
   }
 
@@ -119,12 +112,13 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
                     // Dropdown Mata Kuliah
                     DropdownButtonFormField<int>(
                       value: _selectedMatakuliah,
+                      hint: Text('Pilih Mata Kuliah'),
                       decoration: InputDecoration(
                         labelText: 'Pilih Mata Kuliah',
                         border: OutlineInputBorder(),
                       ),
-                      items: _matakuliahList.map<DropdownMenuItem<int>>((mk) {
-                        return DropdownMenuItem<int>(
+                      items: _matakuliahList.map((mk) {
+                        return DropdownMenuItem(
                           value: mk['id'] as int,
                           child: Text('${mk['nama_matkul']} (${mk['kode_matakul']})'),
                         );
@@ -132,7 +126,8 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
                       onChanged: (value) {
                         setState(() {
                           _selectedMatakuliah = value;
-                          _selectedMahasiswa = null; // Reset mahasiswa selection
+                          _selectedMahasiswa = null; // Reset pilihan mahasiswa
+                          _mahasiswaList = []; // Reset list mahasiswa
                         });
                         if (value != null) {
                           _loadMahasiswa(value);
@@ -148,23 +143,22 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
                     // Dropdown Mahasiswa
                     DropdownButtonFormField<int>(
                       value: _selectedMahasiswa,
+                      hint: Text('Pilih Mahasiswa'),
                       decoration: InputDecoration(
                         labelText: 'Pilih Mahasiswa',
                         border: OutlineInputBorder(),
                       ),
-                      items: _mahasiswaList.map<DropdownMenuItem<int>>((mhs) {
-                        return DropdownMenuItem<int>(
+                      items: _mahasiswaList.map((mhs) {
+                        return DropdownMenuItem(
                           value: mhs['id'] as int,
                           child: Text('${mhs['npm']} - ${mhs['nama']}'),
                         );
                       }).toList(),
-                      onChanged: _selectedMatakuliah == null 
-                        ? null 
-                        : (value) {
-                            setState(() {
-                              _selectedMahasiswa = value;
-                            });
-                          },
+                      onChanged: (value) {
+                        setState(() {
+                          _selectedMahasiswa = value;
+                        });
+                      },
                       validator: (value) {
                         if (value == null) return 'Pilih mahasiswa';
                         return null;
@@ -189,11 +183,6 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
                         if (nilai < 0 || nilai > 100) return 'Nilai harus antara 0-100';
                         return null;
                       },
-                      onChanged: (value) {
-                        setState(() {
-                          _nilai = double.tryParse(value) ?? 0.0;
-                        });
-                      },
                     ),
                     SizedBox(height: 24),
 
@@ -217,7 +206,15 @@ class _DosenNilaiScreenState extends State<DosenNilaiScreen> {
                               await Provider.of<NilaiProvider>(context, listen: false).getNilaiByDosen(userId);
                             }
 
-                            Navigator.pop(context);
+                            // Reset form
+                            setState(() {
+                              _selectedMatakuliah = null;
+                              _selectedMahasiswa = null;
+                              _mahasiswaList = [];
+                              _nilaiController.clear();
+                            });
+                            _formKey.currentState!.reset();
+
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
                                 content: Text('Berhasil menambah nilai'),
